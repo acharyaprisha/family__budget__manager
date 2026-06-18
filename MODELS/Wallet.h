@@ -31,6 +31,11 @@ public:
     double getbalance();
 
     /**
+     * @brief Grants Member access to private wallet data.
+     */
+    friend class Member;
+
+    /**
      * @brief Grants FileManager access to private wallet data.
      */
     friend class FileManager;

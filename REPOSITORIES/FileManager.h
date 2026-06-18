@@ -20,7 +20,18 @@ class Member;
 class FileManager
 {
    
-private:
+public:
+
+/**
+ * @brief Creates a new account file.
+ *
+ * Stores member information and initializes
+ * the required files for account management.
+ *
+ * @param mem Member whose information is stored.
+ * @param pin PIN used for account authentication.
+ */
+    void create_file(Member &m, string pin);
 
 /*
  * Generate the complete path to an
@@ -44,21 +55,6 @@ private:
  */
    string getTransactionPath(string accountNo);
 
-
-public:
-
-    /**
- * @brief Creates a new account file.
- *
- * Stores member information and authentication
- * details in a text file associated with the
- * member's account number.
- *
- * @param m Member whose account file is created.
- * @param pin PIN used for account authentication.
- */
-    void create_file(Member &m, string pin);
-
  /**
  * @brief Authenticates a user.
  *
@@ -72,7 +68,7 @@ public:
     bool authenticate(string accountNo);
 
 
-    /**
+/**
  * @brief Checks whether an account file exists.
  *
  * @param accountNo Account number to search for.
@@ -82,7 +78,7 @@ public:
     bool search_file(string accountNo);
 
 
-    /**
+/**
  * @brief Validates the existence of two account files.
  *
  * Used during money transfer operations to ensure
@@ -95,34 +91,58 @@ public:
  */
     bool search_file(string sender_acc, string receiver_acc);
 
+/**
+ * @brief Retrieves the saved default screen.
+ *
+ * Reads the user's preferred screen
+ * from the wallet file.
+ *
+ * @param accno Account number.
+ * @return Stored default screen identifier.
+ */
+    char ReadDefaultScreen(string accno);
+  
+/**
+ * @brief Stores the default screen preference.
+ *
+ * Saves or updates the user's preferred
+ * default screen in the wallet file.
+ *
+ * @param accno Account number.
+ * @param defaultScreen Selected screen identifier.
+ */
+    void StoreDefaultScreen(string accno, char defaultScreen);
 
-    /**
+
+/**
  * @brief Displays account file contents.
  *
  * Reads and prints the contents of the specified
  * account's transaction file.
  *
  * @param accountNo Account number whose file is
- *                  to be displayed.
+ * to be displayed.
  */
     void read_file(string accountNo);
 
 
-    /*
- * Retrieve account information from the
- * stored wallet file and populate the
- * provided variables with member details.
+/**
+ * @brief Loads account information.
  *
- * @param name      Member name.
- * @param age       Member age.
- * @param isAdmin   Administrative status.
- * @param accno     Account number.
- * @param balance   Current wallet balance.
+ * Reads member information from the
+ * wallet file and populates the
+ * provided variables.
+ *
+ * @param name Member name.
+ * @param age Member age.
+ * @param isAdmin Administrative status.
+ * @param accno Account number.
+ * @param balance Wallet balance.
  */
 void readAccountDetails(string& name,int& age,bool& isAdmin,string& accno,double& balance);
 
 
-    /**
+/**
  * @brief Records a money transfer transaction.
  *
  * Appends transaction details to both sender and
@@ -136,7 +156,7 @@ void readAccountDetails(string& name,int& age,bool& isAdmin,string& accno,double
     void save_in_file(Member &sender, Member &receiver,double amount,double balance);
 
 
-    /**
+/**
  * @brief Records a top-up transaction.
  *
  * Appends top-up details to the account file.
@@ -149,7 +169,7 @@ void readAccountDetails(string& name,int& age,bool& isAdmin,string& accno,double
     void save_in_file(string sender,string receiver,double amount,double balance);
 
     
-    /**
+ /**
  * @brief Displays account details based on access permissions.
  *
  * Administrators can access any account, while
@@ -161,20 +181,20 @@ void readAccountDetails(string& name,int& age,bool& isAdmin,string& accno,double
     void viewAccount(Member &viewer, string targetAccount);
 
 
-    /**
+/**
  * @brief Retrieves the current account balance.
  *
  * Reads the balance stored in the account file.
  *
  * @param accountNo Account number whose balance
- *                  is requested.
+ * is requested.
  * @return Account balance if found.
  * @return -1 if the account file does not exist.
  */
     double getBalance(string accountNo);
 
 
-   /**
+/**
  * @brief Updates the stored account balance.
  *
  * Replaces the balance value stored at the

@@ -1,220 +1,377 @@
 #include<iostream>
+#include "VIEWS/Menu.h"
 #include "MODELS/Member.h"
 #include "MODELS/Wallet.h"
 #include "MODELS/Admin.h"
 #include "REPOSITORIES/FileManager.h"
 #include "SERVICES/Transaction.h"
+#include "SERVICES/InputService.h"
+#include "SERVICES/FilterSystem.h"
+
+#include <limits>
+#include<iostream>
 
 using namespace std;
 
 /**
- * @brief Represents the available menu options
- * in the Family Budget Manager application.
+ * @brief Opens the member operations menu.
  *
- * Provides meaningful names for menu choices
- * used in the application's switch statement.
+ * Displays the available member operations and
+ * executes the selected operation until the user chooses to exit the menu.
+ *
+ * @param member Logged-in member object used to
+ * perform account operations.
  */
-enum MenuOption{             
-    VIEW_ACCOUNT = 1,               
-    VIEW_TRANSACTION_HISTORY,  
-    TOP_UP,                  
-    TRANSFER_MONEY,           
-    ADMIN_ACCESS,             
-    EXIT                     
-};
 
-enum SignIn{
-    CREATE_ACCOUNT=0,
-    LOGIN_ACCOUNT
-};
-
-int main()
+void OpenMemberMenu(Member& member)
 {
-    // declaration of variables to store the user input for creating a member and performing transactions
-    string name, pin;
-    int age, choice1,choice2;
-    bool isAdmin=false;
-    string accno;
-    double balance;
+    bool running = true;
 
-    // Create a FileManager object to handle account,
-   // authentication, transaction, and file operations.
-    FileManager fm;
+    while(running)
+    {
+        Menu menu;
+        menu.showLoginMenu();
 
-    // Create either a regular member or an administrator
-    Member* mem;
+        int choice;
+        cout << "Enter your choice: "<<endl;
+        cin >> choice;
 
-    cout << "Create a new account (enter 0)"<< endl;
-    cout << "Login if account already exists (enter 1)"<<endl;
-    cin>>choice1;
+        cin >> choice;
 
-    switch(choice1){
-        
-        case CREATE_ACCOUNT:
-            
-            // Collect account registration details from the user.
-            cout << "Enter your first name: ";
-            cin >> name;
-
-            cout << "Enter age: ";
-            cin >> age;
-
-            cout << "Enter pin you want to set for your account: ";
-            cin >> pin;
-    
-            cout << "Enter account number: ";
-            cin >> accno;
-
-            cout << "Enter balance: ";
-            cin >> balance;
-
-            cout << "Enter admin status (1/0): "<<endl;
-            cin >> isAdmin;
-
-            // account based on the user's selected role.
-            // Demonstrates inheritance through the Admin class.
-           if(isAdmin){ mem = new Admin(name, age, accno, balance);}
-           else{ mem = new Member(name, age, false, accno, balance);}
- 
-            fm.create_file(*mem, pin);
-
-            break;
-
-        case LOGIN_ACCOUNT:
-          
-            cout << "Enter account number: ";
-            cin >> accno;
-
-            if(!fm.authenticate(accno))
-            {
-            cout << "Login Failed" << endl;
-            return 0;
-            }
-
-            fm.readAccountDetails(name,age,isAdmin,accno,balance);
-
-            if(isAdmin){ mem = new Admin(name, age, accno, balance);}
-   
-            else { mem = new Member(name,age,false,accno,balance);}
-
-            break;
-
-        default:
-            cout <<"Invalid input"<< endl;
-    }
- 
-
-   // Display available operations that can be
-   // performed within the application.
-    cout<<"\n";
-    cout<< "1. View Account Details" << endl;
-    cout<< "2. View Transaction History" << endl;
-    cout<< "3. Top Up Wallet" << endl;
-    cout<< "4. Transfer Money" << endl;
-    cout<< "5. If you are admin access other accounts" << endl;
-    cout<< "6. Exit" << endl;
-    cout<<"\n";
-
-    // Continue processing user requests until the Exit option is selected.
-    do{
-    cout << "Enter your choice: ";
-    cin >> choice2;
-
-    switch(choice2){
-
-        case VIEW_ACCOUNT:
-            // Authenticate the user before displaying account information.
-                if(fm.authenticate(accno)){
-                cout << "Name: " << name << endl;
-                cout << "Age: " << age << endl;
-                cout << "Admin: " << isAdmin << endl;
-                cout << "Account Number: " << accno << endl;
-                cout << "Balance: " << mem->w->getbalance() << endl;
-            }
-            break;
-        
-
-        case VIEW_TRANSACTION_HISTORY:
-            // display transaction history associate dwith current account.
-            fm.read_file(accno);
-            break;
-
-        case TOP_UP:
-            // Authenticate the user and perform a wallet top up transaction.
-            if(fm.authenticate(accno)){
-             double amount;
-             cout << "Enter amount to top up: ";
-             cin >> amount;
-
-             //create a transaction object and process requested topup. 
-             Transaction t("", "", 0);
-             t.topup(*mem, amount);
-            }
-            break;
-
-
-        case TRANSFER_MONEY:
-
-        // Authenticate the user and initiate a money transfer transaction.
-        if(fm.authenticate(accno)){
-        string receiverAccNo;
-        double transferAmount;
-
-        //get the user input for receiver account number and transfer amount for money transfer transaction
-        cout << "Enter receiver account number: ";
-        cin >> receiverAccNo;
-
-        cout << "Enter transfer amount: ";
-        cin >> transferAmount;
-        
-        // Retrieve the receiver's current balance from the account file.
-        double receiverBalance = fm.getBalance(receiverAccNo);
-
-        //if the receiver account number does not exist in the file then display an error message and break the loop
-        if(receiverBalance == -1){
-            cout << "Receiver account not found"<< endl;
-            break;
+        //Handles invalid inputs.
+        if(cin.fail())
+        {
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << "Please enter a valid number." << endl;
+        continue;
         }
 
-        // Create a temporary receiver object using the retrieved account information.
-        Member receiver("",0,false,receiverAccNo,receiverBalance);
+        // Execute the selected member operation.
+        switch(choice)
+        {
+            case 1:
+                member.ViewAccount();
+                break;
 
-        // Process the money transfer between the sender and receiver accounts.
-        Transaction t("", "", 0);
-        t.money_transfer(*mem,receiver,transferAmount);
-       }   
-       break;
+            case 2:
+                member.ViewTransactionHistory();
+                break;
 
-        case ADMIN_ACCESS:
-            // Allow administrators to access account information belonging to other users.
-            if(isAdmin){
-                if(fm.authenticate(accno)) {
-                string targetAcc;
-                cout << "Enter the account number you want to access: ";
-                cin >> targetAcc;
-                fm.viewAccount(*mem, targetAcc);
-            }
-          }
-          //denying access to member to check other members file
-            else{
-                cout << "Access denied. You are not an admin." << endl;
-            }
+            case 3:
+                member.TopUp();
+                break;
+
+            case 4:
+                member.TransferMoney();
+                break;
+
+            case 5:
+                member.AdminAccess();
+                break;
+
+            case 6:
+                member.FilterTransactions();
+                break;
+
+            case 7:
+            // Exit the member menu loop.
+                running = false;
+                break;
+
+            default:
+                cout << "Invalid choice." << endl;
+        }
+        cout << endl;
+    }
+}
+
+/**
+ * @brief Handles the account creation workflow.
+ *
+ * Collects user information, creates either a
+ * member or admin account, and stores the
+ * account data in the corresponding files.
+ */
+void CreateAccountFlow()
+{
+    string name;
+    string pin;
+    string accno;
+
+    int age;
+    bool isAdmin;
+
+    double balance;
+
+    FileManager fm;
+    InputService ip;
+
+    // Collect account information from the user.
+    cout << "Enter your first name: "<<endl;
+    cin >> name;
+
+    //Handles invalid input.
+   while(true)
+    {
+        cout<< "Enter your age: "<<endl;
+        cin>>age;
+
+        if(cin.fail())
+        {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout<<"Invalid age entered, please enter a number"<<endl;
+        }
+
+        //Set age limit.
+        else if(age<18 || age>120)
+        {
+            cout<<"Age must be between 18 to 120"<<endl;
+        }
+        else
+        {
             break;
-
-         case EXIT:
-         //exiting the loop
-            cout << "Exiting" << endl;
-            break;
-
-        default:
-            cout << "Invalid choice entered" << endl;
+        }
     }
 
-//condition for loop to exit
-} while(choice2!= EXIT);
+    cout << "Enter pin you want to set for your account: "<<endl;
+    pin = ip.inputPin();
+    cout<<endl;
 
-// Release dynamically allocated memory
-// before terminating the application.
-    delete mem;
-    return 0;
+    cout << "Enter account number: "<<endl;
+    cin >> accno;
+
+ //Handles invalid balance input.
+  while(true)
+    {
+        cout<< "Enter balance of your account: "<<endl;
+        cin>>balance;
+
+        if(cin.fail())
+        {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout<<"Invalid balance entered"<<endl;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    //Make sures that the status is no other number other 0 or 1.
+  while(true)
+    {
+        cout<< "Enter Admin Status: "<<endl;
+        cin>>isAdmin;
+
+       if(isAdmin == 0 || isAdmin == 1)
+       {
+       break;
+       }
+
+       else
+       {
+       cout << "Please enter 0 or 1" << endl;
+       }
+    }
+
+    Member* mem;
+
+    // Create either a Member or Admin object depending on the selected account type.
+    if(isAdmin)
+    {
+        mem = new Admin(name,age,accno,balance);
+    }
+    else
+    {
+        mem = new Member(name,age,false,accno,balance);
+    }
+
+    // Persist account information to files.
+    fm.create_file(*mem, pin);
+
+    cout << "Account created successfully!" << endl;
+    char choice;
+
+    cout << "Perform Operations (Y/N): "<<endl;
+    cin >> choice;
+
+    if(choice == 'Y' || choice == 'y')
+    {
+    OpenMemberMenu(*mem);
+    }
 }
+
+/**
+ * @brief Handles the login workflow.
+ *
+ * Authenticates the user, loads account details,
+ * creates a member object, opens the configured
+ * default screen, and optionally displays the
+ * full member menu.
+ */
+void LoginFlow()
+{
+    FileManager fm;
+    string accno;
+    Menu menu;
+
+    cout << "Enter Account Number: ";
+    cin >> accno;
+
+    // Authenticate the account before loading data
+    if(!fm.authenticate(accno))
+    {
+        return;
+    }
+
+    string name;
+    int age;
+    bool isAdmin;
+    double balance;
+
+    // Load account information from storage.
+    fm.readAccountDetails(name,age,isAdmin,accno,balance);
+
+    Member member(name,age,isAdmin,accno,balance);
+
+    // Open the user's configured default screen.
+    member.configure_default_screen(accno);
+
+    char choice;
+
+    // Allow the user to access additional operations.
+    cout << "Would you like to view the full menu? (Y/N): "<<endl;
+    cin >> choice;
+
+    if(choice == 'Y' || choice == 'y')
+    {
+       // Display available member operations.
+       bool running = true;
+
+    while(running)
+    {
+        menu.showLoginMenu();
+
+        int choice;
+
+        cout << "Enter your choice: "<<endl;
+        cin >> choice;
+
+        //Handles invalid input.
+        if(cin.fail())
+        {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+            cout << "Invalid input, enter a number." << endl;
+            continue;
+        }
+
+        // Execute the selected member operation.
+        switch(choice)
+        {
+            case 1:
+                member.ViewAccount();
+                break;
+
+            case 2:
+                member.ViewTransactionHistory();
+                break;
+
+            case 3:
+                member.TopUp();
+                break;
+
+            case 4:
+                member.TransferMoney();
+                break;
+
+            case 5:
+                member.AdminAccess();
+                break;
+
+            case 6:
+                member.FilterTransactions();
+                break;
+
+            case 7:
+                member.changeDefaultScreen();
+                break;
+
+            case 8:
+                member.configure_default_screen(accno);
+                break;
+
+            case 9:
+            // Exit the member menu loop.
+                running = false;
+                break;
+
+            default:
+                cout << "Invalid choice." << endl;
+        }
+        cout << endl;
+    }
+}
+}
+        
+ 
+
+/**
+ * @brief Entry point of the Family Budget Manager.
+ *
+ * Displays the main menu and routes the user to
+ * account creation, login, or application exit
+ * based on the selected option.
+ *
+ * @return 0 on successful program termination.
+ */
+int main()
+{
+    Menu menu;
+    
+    // Handles wrong input cases.
+    bool running = true;
+
+    while(running)
+    {
+        int choice = menu.showMainMenu();
+
+        if(cin.fail())
+        {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+            cout << "Invalid input, enter a number." << endl;
+            continue;
+        }
+    
+
+    switch(choice)
+    {
+        case 1:
+        //create account.
+        CreateAccountFlow();
+        break;
+
+        case 2:
+        //login.
+        LoginFlow();
+        break;
+
+        case 3:
+        // exit.
+        running = false;
+        cout<<"Thankyou for using Family Budget Manager"<<endl;
+        break;
+
+        default:
+        cout<<"Invalid choice entered "<<endl;
+        break;
+    }
+  }
+}
+

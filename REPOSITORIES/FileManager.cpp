@@ -6,6 +6,7 @@
 #include "FileManager.h"
 #include "../MODELS/Member.h"
 #include "../MODELS/Wallet.h"
+#include "../SERVICES/InputService.h"
 
 #include <iostream>
 #include <fstream>
@@ -15,26 +16,34 @@
 using namespace std;
 namespace fs= std:: filesystem;
 
+InputService ip;
+
 // Position of the balance field within the account file.
 const int index_for_balance  = 5;
 
 char buffer[100];
 
-/*
- * Create and initialize account and transaction
- * files for a newly registered member.
+
+/**
+ * @brief Creates the storage files associated
+ * with a new account.
+ *
+ * Generates the account directory and stores
+ * the member's personal and wallet information.
  */
 void FileManager::create_file(Member &m, string pin){
 
     // Ensure the data folder exists.
-   if(!fs::exists("DATA")){
+   if(!fs::exists("DATA"))
+   {
       fs:: create_directory("DATA");
    }
 
     string accountFolder= "DATA/" + m.w->accountNumber;
    
    //Check whether account folder exits.
-   if(fs::exists(accountFolder)){
+   if(fs::exists(accountFolder))
+   {
     cout<<"Account already exists."<<endl;
     return;
    }
@@ -48,7 +57,8 @@ void FileManager::create_file(Member &m, string pin){
         ofstream TransactionFile(transactionFile);
         ofstream AccountFile(filename);
 
-        if(AccountFile.is_open() && TransactionFile.is_open()) {
+        if(AccountFile.is_open() && TransactionFile.is_open())
+        {
             // Write account information in a fixed format
             // to support future retrieval and updates.
 
@@ -63,8 +73,9 @@ void FileManager::create_file(Member &m, string pin){
             TransactionFile.close();
         }
 
-        else {
-            cout << "Unable to create file"<< endl;
+        else
+        {
+            cout << "Unable to create your account"<< endl;
         }
 }
 
@@ -76,8 +87,9 @@ void FileManager::create_file(Member &m, string pin){
  * Example:
  * data/12345/Wallet.txt
  */
-string FileManager :: getAccountPath(string accountNo){
-    return "DATA/" + accountNo + "/Wallet.txt";
+string FileManager :: getAccountPath(string accountNo)
+{
+    return "DATA/" + accountNo + "/" + "/Wallet.txt";
 }
 
 /*
@@ -87,21 +99,28 @@ string FileManager :: getAccountPath(string accountNo){
  * Example:
  * data/12345/Transactions.txt
  */
-string FileManager :: getTransactionPath(string accountNo){
+string FileManager :: getTransactionPath(string accountNo)
+{
     return "DATA/" + accountNo  + "/Transactions.txt";
 }
 
-/*
- * Validate user credentials against the
- * PIN stored in the account file.
+/**
+ * @brief Verifies account credentials.
+ *
+ * Reads the stored PIN and compares it
+ * with the user-provided PIN.
+ *
+ * @param accno Account number being authenticated.
+ * @return Authentication result.
  */
-bool FileManager::authenticate(string accountNo){ 
-
+bool FileManager::authenticate(string accountNo)
+{ 
     string filename = getAccountPath(accountNo);
     ifstream file(filename);
 
     // Verify that the account file exists.
-    if(!file.is_open()){      
+    if(!file.is_open())
+    {      
         cout << "Account not found" << endl;
         return false;
     }
@@ -113,16 +132,18 @@ bool FileManager::authenticate(string accountNo){
     getline(file, storedPin); 
 
     cout << "Enter PIN: ";
-    cin >> enteredPin;
+    enteredPin = ip.inputPin();
 
     file.close();
 
     // Grant access only if the supplied PIN matches.
-    if(storedPin == enteredPin){ 
-        cout << "Authentication Successful" << endl;
+    if(storedPin == enteredPin)
+    { 
+        cout << "\nAuthentication Successful" << endl;
         return true;
     }
-    else{
+    else
+    {
         cout << "Incorrect PIN" << endl;
         return false;
     }
@@ -131,37 +152,123 @@ bool FileManager::authenticate(string accountNo){
 /*
  * Check whether an account file exists.
  */
-bool FileManager::search_file(string accountNo){  
-        string filename = getAccountPath(accountNo);
-        ifstream file(filename);
+bool FileManager::search_file(string accountNo)
+{  
+    string filename = getAccountPath(accountNo);
+    ifstream file(filename);
 
-        if(file.is_open()){
+        if(file.is_open())
+        {
             file.close();
             return true;
         }
         return false;
-    }
+}
 
 /*
  * Verify the existence of both sender and
  * receiver account files before a transfer.
  */
-bool FileManager::search_file(string sender_acc, string receiver_acc){ 
-        return search_file(sender_acc) && search_file(receiver_acc);
+bool FileManager::search_file(string sender_acc, string receiver_acc)
+{ 
+    return search_file(sender_acc) && search_file(receiver_acc);
+}
+
+/**
+ * @brief Reads the default screen preference.
+ *
+ * Retrieves the screen configured
+ * to open automatically after login.
+ */
+char FileManager:: ReadDefaultScreen(string accno)
+{   
+    string filename = getAccountPath(accno);
+    ifstream file(filename);
+
+// Return senitel value if wallet file cannot be opened.
+    if(!file.is_open())
+    {
+        cout<<"Account not found!"<<endl;
+        return '0';
     }
 
-/*
- * Display the transaction history associated
- * with the specified account.
+    string temp;
+
+//Skip wallet information fields toreach default screen entry.
+    for(int i = 0; i < 6; i++)
+    {
+    getline(file, temp);
+    }
+
+    char defaultScreen= '0';
+
+//Attempt to read stored default screen preference
+    if(file >> defaultScreen)
+    {
+        file.close();
+        return defaultScreen;
+    }
+
+    file.close();
+
+//No default screen has been configured for this account.
+    return '0';
+}
+
+/**
+ * @brief Saves default screen settings.
+ *
+ * Updates the wallet file with the
+ * user's selected default screen.
+ */
+void FileManager::StoreDefaultScreen(string accno, char defaultScreen)
+{
+    string filename = getAccountPath(accno);
+
+    vector<string> lines;
+    string line;
+
+    ifstream file(filename);
+
+    while(getline(file, line))
+    {
+        lines.push_back(line);
+    }
+
+    file.close();
+
+    if(lines.size() >= 7)
+    {
+        lines[6] = string(1, defaultScreen);
+    }
+    else
+    {
+        lines.push_back(string(1, defaultScreen));
+    }
+
+    ofstream outFile(filename);
+
+    for(string line : lines)
+    {
+        outFile << line << endl;
+    }
+    outFile.close();
+}
+
+/**
+ * @brief Retrieves transaction history.
+ *
+ * Reads transaction records from the
+ * transaction file and displays them.
  */
 void FileManager::read_file(string accountNo)
-    {
+{
         string filename = getTransactionPath(accountNo);
         ifstream file(filename);
 
         //check if the file exists or not
         if(!file.is_open()){ 
-            cout << "File not found" << endl;
+            cout << "Account not found!" << endl;
             return;
         }
 
@@ -173,21 +280,21 @@ void FileManager::read_file(string accountNo)
         }
 
         file.close();
-    }
+}
 
-/*
- * Load persisted account details from
- * storage and populate the supplied
- * references with member information.
+/**
+ * @brief Reads stored account information.
  *
- * Supports reconstruction of Member
- * or Admin objects during login.
+ * Extracts member details from the
+ * wallet file during login.
  */
-void FileManager::readAccountDetails(string& name, int& age, bool& isAdmin, string& accno, double& balance){
+void FileManager::readAccountDetails(string& name, int& age, bool& isAdmin, string& accno, double& balance)
+{
     ifstream file(getAccountPath(accno));
 
     if(!file.is_open())
     {
+        cout<<"Account not found!"<<endl;
         return;
     }
 
@@ -211,7 +318,8 @@ void FileManager::readAccountDetails(string& name, int& age, bool& isAdmin, stri
 /*
  * Record a money transfer in both account histories.
  */
-void FileManager::save_in_file(Member &sender,Member &receiver,double amount,double balance) { 
+void FileManager::save_in_file(Member &sender,Member &receiver,double amount,double balance)
+{ 
     time_t now = time(0);
     tm* local_time = std::localtime(&now);
 
@@ -235,7 +343,8 @@ void FileManager::save_in_file(Member &sender,Member &receiver,double amount,dou
 /*
  * Record a wallet top-up transaction.
  */
-void FileManager::save_in_file(string sender,string receiver,double amount,double balance){
+void FileManager::save_in_file(string sender,string receiver,double amount,double balance)
+{
     time_t now = time(0);
     tm* local_time = std::localtime(&now);
 
@@ -307,10 +416,11 @@ double FileManager::getBalance(string accountNo)
     return balance;
 }
 
-/*
- * Update the balance field stored near the
- * beginning of the account file while preserving
- * transaction history.
+/**
+ * @brief Persists balance changes.
+ *
+ * Updates the wallet file after a
+ * top-up or transfer transaction.
  */
 void FileManager::updateBalance(string accountNo,double newBalance) {
     string filename = getAccountPath(accountNo);
@@ -319,7 +429,7 @@ void FileManager::updateBalance(string accountNo,double newBalance) {
 
 // Ensure the target account file exists.
     if(!inFile.is_open()){
-        cout << "File not found" << endl;
+        cout << "Account not found!" << endl;
         return;
     }
 
